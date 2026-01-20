@@ -574,6 +574,25 @@
                 if (timerEl) {
                     timerEl.textContent = UIHelpers.formatTime(AppState.currentTime);
                 }
+                // Update button visibility without re-rendering entire project
+                const container = document.querySelector(`[data-project-id="${AppState.activeTimer.projectId}"]`);
+                if (container) {
+                    const buttons = container.querySelectorAll('button');
+                    buttons.forEach(btn => {
+                        if (btn.textContent.includes('Start Timer')) {
+                            btn.style.display = 'none';
+                        } else if (btn.textContent.includes('Pause')) {
+                            btn.style.display = 'block';
+                        } else if (btn.textContent.includes('Stop')) {
+                            btn.disabled = false;
+                            btn.style.opacity = '1';
+                            btn.style.cursor = 'pointer';
+                            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                            btn.classList.add('bg-red-500', 'hover:bg-red-600');
+                            btn.classList.remove('bg-red-300');
+                        }
+                    });
+                }
             }
         }
 
@@ -617,11 +636,11 @@
                 const displayTime = isActive ? AppState.currentTime : parseInt(project.total_time);
                 
                 return `
-                    <div class="p-4 rounded-lg border transition-all ${
+                    <div class="p-4 rounded-lg border transition-all" data-project-id="${project.id}" ${
                         isActive 
-                            ? 'bg-indigo-50 border-indigo-300'
-                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                    }">
+                            ? 'class="p-4 rounded-lg border transition-all bg-indigo-50 border-indigo-300"'
+                            : 'class="p-4 rounded-lg border transition-all bg-gray-50 border-gray-200 hover:bg-gray-100"'
+                    }>
                         <div class="flex items-start justify-between mb-2">
                             <div class="flex items-center gap-2 flex-1">
                                 <div class="w-3 h-3 rounded-full" style="background-color: ${project.color}"></div>
@@ -638,24 +657,31 @@
                         <div id="timer-${project.id}" class="text-2xl font-bold mb-3 text-gray-800">
                             ${UIHelpers.formatTime(displayTime)}
                         </div>
-                        <div class="flex gap-2 mb-3">
-                            ${isActive ? `
-                                <button onclick="pauseTimer()" 
-                                    class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    Pause
-                                </button>
-                                <button onclick="stopTimer()" 
-                                    class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    Stop
-                                </button>
-                            ` : `
-                                <button onclick="startTimer(${project.id})" 
-                                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                    Start Timer
-                                </button>
-                            `}
+                        <div class="flex flex-col gap-2">
+                            <div class="flex gap-2">
+                                ${isActive ? `
+                                    <button onclick="pauseTimer()" 
+                                        class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                        Pause
+                                    </button>
+                                    <button onclick="stopTimer()" 
+                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                        Stop
+                                    </button>
+                                ` : `
+                                    <button onclick="startTimer(${project.id})" 
+                                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                        Start Timer
+                                    </button>
+                                    <button onclick="stopTimer()" 
+                                        class="flex-1 bg-red-300 text-white px-3 py-2 rounded-lg text-sm font-medium opacity-50 cursor-not-allowed"
+                                        disabled>
+                                        Stop
+                                    </button>
+                                `}
+                            </div>
                             <button onclick="showProjectTasks(${project.id})" 
-                                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                class="w-full bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                                 Tasks
                             </button>
                         </div>
