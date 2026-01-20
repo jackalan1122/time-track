@@ -320,6 +320,143 @@ To verify the fixes:
 
 ---
 
+## 12. TASK MANAGEMENT FEATURE ✅
+
+### 12.1 Task Database Schema
+**Implementation:**
+- Added `tasks` table with fields: id, project_id, title, description, is_completed, created_at, updated_at
+- Proper foreign key relationship to projects table
+- Indexed on project_id and is_completed for fast queries
+- UTF-8 character encoding for international support
+
+### 12.2 Task API Endpoints
+**Implementation:**
+- `get_tasks` - Retrieve all tasks for a project
+- `add_task` - Create new task with title and description
+- `update_task` - Update task details and completion status
+- `delete_task` - Delete task from project
+- Full validation on all endpoints
+- Proper HTTP status codes and error handling
+
+### 12.3 Task Management UI
+**Implementation:**
+- "Tasks" button on each project card
+- Modal dialog for task management
+- Task input form with title and description
+- Task list with checkbox for completion status
+- Delete button for each task
+- Strike-through styling for completed tasks
+- Escape key support to close modal
+
+### 12.4 Task Features
+**Capabilities:**
+- Add tasks to any project
+- View all tasks for a project in modal dialog
+- Mark tasks as complete/incomplete with checkbox
+- Delete tasks individually
+- Full CRUD operations
+- Real-time UI updates
+
+---
+
+## 13. EXPORT REPORT FEATURE ✅
+
+### 13.1 Export Functionality
+**Implementation:**
+- Added dual export buttons to dashboard: "CSV" (green) and "PDF" (red)
+- CSV export contains:
+  - Summary section (period, report date, total time in seconds and hours)
+  - Project breakdown table (project name, time spent, hours)
+  - Detailed time entries (date, project, duration in seconds, formatted HH:MM:SS)
+- PDF export generates:
+  - Formatted HTML5 document with professional styling
+  - Summary section with period, report date, and total hours
+  - Project breakdown table with time data
+  - Detailed time entries table with formatted durations
+  - Print-friendly CSS for browser print-to-PDF functionality
+  - Footer with generation timestamp
+- JSON export format also available via API
+- Automatic file download with timestamp (CSV/JSON)
+- Browser print dialog for PDF (user saves as PDF)
+
+### 13.2 Export API Endpoint
+**Implementation:**
+- `export_report` action with period and format parameters
+- Supports periods: day, week, month, year
+- Supports formats: csv (direct download), json (data object), pdf (HTML for printing)
+- Queries project breakdown and all time entries for period
+- Calculates totals and formats time data
+- Proper date range filtering based on period selection
+- Security: htmlspecialchars() escaping for all HTML content
+
+### 13.3 Frontend Export Handler
+**Implementation:**
+- `exportReport(format)` function for CSV/JSON/PDF exports
+- CSV: Direct download with automatic filename
+- PDF: Opens HTML in new window with print dialog
+- JSON: Downloads formatted data file
+- Respects currently selected period filter
+- Error handling with user notifications
+- Success confirmation message
+
+### 13.4 Use Cases
+**Capabilities:**
+- Export today's data in CSV/PDF/JSON
+- Export week's summary and details in all formats
+- Export monthly reports in all formats
+- Export yearly data in all formats
+- CSV format for Excel/Sheets compatibility
+- PDF format for printing and archiving
+- JSON format for programmatic processing
+
+---
+
+## 14. NEXT STEPS FOR PRODUCTION
+
+Before deploying to production:
+
+1. [ ] Set `APP_ENV=production` in `.env`
+2. [ ] Generate strong `SESSION_SECRET`
+3. [ ] Enable HTTPS
+4. [ ] Set proper file permissions
+5. [ ] Enable PHP error logging (disable display_errors)
+6. [ ] Set up database backups
+7. [ ] Test with production data volume
+8. [ ] Implement rate limiting
+9. [ ] Add authentication/authorization
+10. [ ] Set up monitoring and alerts
+
+---
+
+## Migration Guide
+
+If updating existing installation:
+
+1. Backup existing database
+2. Run DATABASE_SCHEMA.sql to add tasks table
+3. Copy new `config.php` and `api.php`
+4. Copy updated `index.php`
+5. Create `.env` from `.env.example`
+6. Test all features before pushing to production
+
+---
+
+**Last Updated:** January 20, 2026  
+**Status:** ✅ ALL FEATURES COMPLETE
+- ✅ Security: Input validation, environment variables, error handling, SQL injection prevention
+- ✅ Frontend: Modular architecture, state management, localStorage persistence
+- ✅ Timer: Pause/stop functionality with localStorage persistence
+- ✅ Manual Entry: Time entry form with date picker and flexible time input (hours/minutes/seconds)
+- ✅ Editing: Edit modal for updating entry durations
+- ✅ Dashboard: Period filtering (day/week/month/year) with dynamic charts
+- ✅ Tasks: Full CRUD operations with project association
+- ✅ Export: CSV, JSON, and PDF formats for all time periods
+  - CSV: Direct download with summary and detailed entries
+  - PDF: Print-to-PDF via browser print dialog with formatted HTML
+  - JSON: Data export for programmatic processing
+
+---
+
 ## 12. NEXT STEPS FOR PRODUCTION
 
 Before deploying to production:

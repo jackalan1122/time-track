@@ -40,15 +40,31 @@
     <div class="max-w-7xl mx-auto px-6 py-8">
         <!-- Dashboard View -->
         <div id="dashboardView">
-            <div class="mb-6 flex items-center justify-between">
+            <div class="mb-6 flex items-center justify-between gap-4">
                 <h2 class="text-3xl font-bold text-gray-800">Analytics Dashboard</h2>
-                <select id="periodSelector" onchange="loadDashboard()" 
-                    class="bg-white border border-gray-300 rounded-lg px-4 py-2 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <option value="day">Today</option>
-                    <option value="week">Last 7 Days</option>
-                    <option value="month">Last 30 Days</option>
-                    <option value="year">Last Year</option>
-                </select>
+                <div class="flex items-center gap-3">
+                    <button onclick="exportReport('csv')" 
+                        class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2m0 0v-8m0 8H3m0 0h18"/>
+                        </svg>
+                        CSV
+                    </button>
+                    <button onclick="exportReport('pdf')" 
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        PDF
+                    </button>
+                    <select id="periodSelector" onchange="loadDashboard()" 
+                        class="bg-white border border-gray-300 rounded-lg px-4 py-2 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="day">Today</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="year">Last Year</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Stats Cards -->
@@ -268,6 +284,7 @@
             selectedColor: CONFIG.COLORS[0],
             projects: [],
             entries: [],
+            tasks: [],
             activeTimer: null,
             currentTime: 0,
             timerInterval: null,
@@ -275,6 +292,7 @@
             dailyChart: null,
             currentView: 'dashboard',
             isLoading: false,
+            selectedProjectId: null,
 
             loadFromStorage() {
                 const stored = localStorage.getItem(CONFIG.STORAGE_KEY_TIMER);
@@ -354,7 +372,11 @@
             getEntries: (projectId = null) => APIService.call('get_entries', 'GET', null, { project_id: projectId }),
             addEntry: (projectId, duration, date) => APIService.call('add_entry', 'POST', { project_id: projectId, duration, date }),
             deleteEntry: (id) => APIService.call('delete_entry', 'POST', null, { id }),
-            getDashboardStats: (period) => APIService.call('get_dashboard_stats', 'GET', null, { period })
+            getDashboardStats: (period) => APIService.call('get_dashboard_stats', 'GET', null, { period }),
+            getTasks: (projectId) => APIService.call('get_tasks', 'GET', null, { project_id: projectId }),
+            addTask: (projectId, title, description) => APIService.call('add_task', 'POST', { project_id: projectId, title, description }),
+            updateTask: (id, title, description, is_completed) => APIService.call('update_task', 'POST', { id, title, description, is_completed }),
+            deleteTask: (id) => APIService.call('delete_task', 'POST', null, { id })
         };
 
         // UI Helpers
@@ -616,8 +638,8 @@
                         <div id="timer-${project.id}" class="text-2xl font-bold mb-3 text-gray-800">
                             ${UIHelpers.formatTime(displayTime)}
                         </div>
-                        ${isActive ? `
-                            <div class="flex gap-2">
+                        <div class="flex gap-2 mb-3">
+                            ${isActive ? `
                                 <button onclick="pauseTimer()" 
                                     class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                                     Pause
@@ -626,13 +648,17 @@
                                     class="flex-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                                     Stop
                                 </button>
-                            </div>
-                        ` : `
-                            <button onclick="startTimer(${project.id})" 
-                                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-                                Start Timer
+                            ` : `
+                                <button onclick="startTimer(${project.id})" 
+                                    class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                    Start Timer
+                                </button>
+                            `}
+                            <button onclick="showProjectTasks(${project.id})" 
+                                class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                                Tasks
                             </button>
-                        `}
+                        </div>
                     </div>
                 `;
             }).join('');
@@ -811,6 +837,157 @@
             }
         }
 
+        // Task Management Functions
+        function showProjectTasks(projectId) {
+            AppState.selectedProjectId = projectId;
+            const project = AppState.projects.find(p => p.id == projectId);
+            if (!project) return;
+            
+            const modal = document.getElementById('tasksModal');
+            if (!modal) {
+                // Create modal if it doesn't exist
+                createTasksModal();
+            }
+            
+            document.getElementById('tasksModalTitle').textContent = `Tasks for ${project.name}`;
+            document.getElementById('tasksModal').classList.remove('hidden');
+            loadTasks(projectId);
+        }
+
+        function closeTasksModal() {
+            document.getElementById('tasksModal').classList.add('hidden');
+            AppState.selectedProjectId = null;
+        }
+
+        function createTasksModal() {
+            const modalHTML = `
+                <div id="tasksModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                        <div class="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between">
+                            <h2 id="tasksModalTitle" class="text-xl font-bold text-gray-800">Tasks</h2>
+                            <button onclick="closeTasksModal()" class="text-gray-500 hover:text-gray-700">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div class="space-y-3">
+                                <input type="text" id="newTaskTitle" placeholder="Task title" 
+                                    class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <textarea id="newTaskDescription" placeholder="Task description (optional)" rows="2"
+                                    class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                                <button onclick="addTask()" 
+                                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                    Add Task
+                                </button>
+                            </div>
+                            <div class="border-t border-gray-200 pt-4">
+                                <h3 class="font-semibold text-gray-800 mb-3">Your Tasks</h3>
+                                <div id="tasksList" class="space-y-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        async function loadTasks(projectId) {
+            if (!projectId) return;
+            try {
+                AppState.tasks = await APIService.getTasks(projectId);
+                renderTasks();
+            } catch (error) {
+                console.error('Failed to load tasks:', error);
+            }
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            if (!tasksList) return;
+            
+            if (AppState.tasks.length === 0) {
+                tasksList.innerHTML = '<p class="text-gray-400 text-sm text-center py-6">No tasks yet. Add one to get started!</p>';
+                return;
+            }
+
+            tasksList.innerHTML = AppState.tasks.map(task => `
+                <div class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                    <input type="checkbox" ${task.is_completed ? 'checked' : ''} 
+                        onchange="toggleTask(${task.id}, this.checked)"
+                        class="mt-1 w-5 h-5 rounded border-gray-300 text-indigo-600 cursor-pointer">
+                    <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-800 ${task.is_completed ? 'line-through text-gray-500' : ''}">${task.title}</div>
+                        ${task.description ? `<div class="text-sm text-gray-600 mt-1">${task.description}</div>` : ''}
+                    </div>
+                    <button onclick="deleteTask(${task.id})" 
+                        aria-label="Delete task"
+                        class="p-1.5 hover:bg-red-50 rounded transition-colors text-red-500 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function addTask() {
+            const projectId = AppState.selectedProjectId;
+            const taskTitle = document.getElementById('newTaskTitle');
+            const taskDesc = document.getElementById('newTaskDescription');
+
+            if (!projectId) {
+                UIHelpers.showError('Please select a project first');
+                return;
+            }
+
+            const title = taskTitle ? taskTitle.value.trim() : '';
+            if (!title) {
+                UIHelpers.showError('Task title is required');
+                return;
+            }
+
+            const description = taskDesc ? taskDesc.value.trim() : '';
+
+            UIHelpers.setLoading(true);
+            try {
+                await APIService.addTask(projectId, title, description);
+                if (taskTitle) taskTitle.value = '';
+                if (taskDesc) taskDesc.value = '';
+                await loadTasks(projectId);
+                UIHelpers.showSuccess('Task added successfully');
+            } finally {
+                UIHelpers.setLoading(false);
+            }
+        }
+
+        async function toggleTask(taskId, isCompleted) {
+            const task = AppState.tasks.find(t => t.id == taskId);
+            if (!task) return;
+
+            try {
+                await APIService.updateTask(taskId, task.title, task.description, isCompleted);
+                await loadTasks(AppState.selectedProjectId);
+            } catch (error) {
+                UIHelpers.showError('Failed to update task');
+                renderTasks();
+            }
+        }
+
+        async function deleteTask(taskId) {
+            if (!confirm('Delete this task?')) return;
+
+            UIHelpers.setLoading(true);
+            try {
+                await APIService.deleteTask(taskId);
+                await loadTasks(AppState.selectedProjectId);
+                UIHelpers.showSuccess('Task deleted');
+            } finally {
+                UIHelpers.setLoading(false);
+            }
+        }
+
         // Dashboard Functions
         async function loadDashboard() {
             const period = document.getElementById('periodSelector').value;
@@ -830,6 +1007,53 @@
                 console.error('Failed to load dashboard:', error);
             } finally {
                 UIHelpers.setLoading(false);
+            }
+        }
+
+        // Export Functions
+        async function exportReport(format) {
+            const period = document.getElementById('periodSelector').value;
+            
+            try {
+                const url = CONFIG.API_BASE + '?action=export_report&period=' + encodeURIComponent(period) + '&format=' + encodeURIComponent(format);
+                
+                if (format === 'csv') {
+                    // Download CSV file
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `time-tracker-report-${period}-${new Date().toISOString().split('T')[0]}.csv`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    UIHelpers.showSuccess('CSV report exported successfully');
+                } else if (format === 'pdf') {
+                    // Open PDF in new window for printing
+                    const pdfWindow = window.open(url, '_blank');
+                    pdfWindow.onload = function() {
+                        setTimeout(() => {
+                            pdfWindow.print();
+                        }, 500);
+                    };
+                    UIHelpers.showSuccess('PDF report opened - use browser print dialog (Ctrl+P) to save as PDF');
+                } else if (format === 'json') {
+                    // Download JSON file
+                    const response = await fetch(url);
+                    const data = await response.json();
+                    
+                    const dataStr = JSON.stringify(data, null, 2);
+                    const blob = new Blob([dataStr], { type: 'application/json' });
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `time-tracker-report-${period}-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(link.href);
+                    UIHelpers.showSuccess('JSON report exported successfully');
+                }
+            } catch (error) {
+                console.error('Export failed:', error);
+                UIHelpers.showError('Failed to export report: ' + error.message);
             }
         }
 
@@ -1022,8 +1246,12 @@
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
                     closeEditModal();
+                    closeTasksModal();
                 }
             });
+
+            // Create tasks modal
+            createTasksModal();
         });
     </script>
 </body>
