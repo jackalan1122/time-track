@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>API Test Page</h1>
+    <p>Click the button to test the API connection:</p>
+    <button onclick="testAPI()">Test API</button>
+    <button onclick="testAPIDebug()">Test API with Debug</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing...</p>';
+            
+            try {
+                const response = await fetch('api.php?action=get_projects', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const text = await response.text();
+                console.log('Response text:', text.substring(0, 200));
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ API returned invalid JSON</p>
+                        <p><strong>First 500 chars:</strong></p>
+                        <pre>${text.substring(0, 500)}</pre>
+                        <p><strong>Error:</strong> ${e.message}</p>
+                    `;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `
+                    <p class="success">✅ API is working!</p>
+                    <p><strong>Response:</strong></p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+
+        async function testAPIDebug() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Testing with debug info...</p>';
+            
+            console.log('Current pathname:', window.location.pathname);
+            console.log('Calculated API path:', window.location.pathname.replace('index.php', '') + 'api.php');
+            
+            try {
+                // Test with full URL
+                const fullUrl = window.location.origin + window.location.pathname.replace('index.php', 'api.php').replace('test.html', '') + 'api.php?action=get_projects';
+                console.log('Full URL:', fullUrl);
+                
+                const response = await fetch(fullUrl);
+                const text = await response.text();
+                
+                resultDiv.innerHTML = `
+                    <p><strong>Full URL:</strong> ${fullUrl}</p>
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Response (first 500 chars):</strong></p>
+                    <pre>${text.substring(0, 500)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
