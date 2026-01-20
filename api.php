@@ -241,13 +241,16 @@ try {
             $period = $_GET['period'] ?? 'week';
             
             // Validate period
-            if (!in_array($period, ['week', 'month', 'year'], true)) {
+            if (!in_array($period, ['day', 'week', 'month', 'year'], true)) {
                 sendJSON(['error' => 'Invalid period'], 400);
             }
             
             // Calculate date range
             $endDate = date('Y-m-d 23:59:59');
             switch ($period) {
+                case 'day':
+                    $startDate = date('Y-m-d 00:00:00');
+                    break;
                 case 'week':
                     $startDate = date('Y-m-d 00:00:00', strtotime('-7 days'));
                     break;

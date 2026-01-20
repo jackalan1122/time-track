@@ -44,6 +44,7 @@
                 <h2 class="text-3xl font-bold text-gray-800">Analytics Dashboard</h2>
                 <select id="periodSelector" onchange="loadDashboard()" 
                     class="bg-white border border-gray-300 rounded-lg px-4 py-2 font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="day">Today</option>
                     <option value="week">Last 7 Days</option>
                     <option value="month">Last 30 Days</option>
                     <option value="year">Last Year</option>
